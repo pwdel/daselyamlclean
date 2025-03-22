@@ -1,0 +1,20 @@
+#!/usr/bin/env python3
+
+import subprocess
+
+def read_dasel(path, filename):
+    cmd = [
+        "dasel",
+        "-f", filename,
+        "-r", "yaml",
+        "-s", path,
+    ]
+    result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+    return result.stdout.strip()
+
+def main():
+    value = read_dasel("overall.[0].replaceable_a", "manifest.yaml")
+    print(f"Value at overall.[0].replaceable_a: {value}")
+
+if __name__ == "__main__":
+    main()

@@ -1,0 +1,55 @@
+dasel put -t string -v foo -f manifest.yaml -r yaml -s first
+
+dasel delete \
+  -t string \
+  -v foo \
+  -f manifest.yaml \
+  -r yaml \
+  -w yaml \
+  -s 'overall.replaceable_a'
+
+
+```
+
+in order to access lists within an above key, you have to first convert a yaml to json.
+
+```
+% dasel -f manifest.yaml -r yaml -w json
+{
+  "first": "foo",
+  "overall": [
+    {
+      "name": "example1",
+      "replaceable_a": "oldvalue",
+      "keep_this": "safe"
+    },
+    {
+      "name": "example2",
+      "replaceable_b": "oldvalue",
+      "replaceable_c": "oldvalue",
+      "something_else": "untouched"
+    }
+  ]
+}
+```
+
+So if we want to index something inside we do:
+
+```
+% dasel -f manifest.yaml -r yaml -w json | dasel -r json 'overall.[1]'
+{
+  "name": "example2",
+  "replaceable_b": "oldvalue",
+  "replaceable_c": "oldvalue",
+  "something_else": "untouched"
+}
+```
+
+OK, actually it does work with yaml now, like so:
+
+```
+% dasel -f manifest.yaml -r yaml 'overall.[0]'
+name: example1
+replaceable_a: oldvalue
+keep_this: safe
+```
