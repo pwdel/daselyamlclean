@@ -1,0 +1,162 @@
+#!/usr/bin/env python3
+
+import subprocess
+import yaml
+import argparse
+import shutil
+
+def insert_entire_subtree(manifest_file, top_key, rep_val):
+    """Insert an entire subtree when the top-level key is missing in the manifest."""
+    rep_val_str = yaml.dump(rep_val, default_flow_style=False).strip()
+    print(f"Inserting top-level key: {top_key}")
+    cmd = [
+        "dasel", 
+        "put", 
+        "--file", manifest_file, 
+        "--read", "yaml", 
+        "--selector", top_key,
+        "--type", "yaml",
+        "--value", rep_val_str,
+        "--write", "yaml",
+        ]
+    subprocess.run(cmd, check=True)
+
+def replace_item_in_list(manifest_file, top_key, manifest_list, rep_list):
+    """
+    For a top-level key whose value is a list, iterate over the replacement list.
+    For each dictionary item in the replacement list, update matching keys in the manifest list.
+    """
+    for rep_item in rep_list:
+        if isinstance(rep_item, dict):
+            for sub_key, new_value in rep_item.items():
+                updated = False
+                for idx, element in enumerate(manifest_list):
+                    if isinstance(element, dict) and sub_key in element:
+                        path = f"{top_key}.[{idx}].{sub_key}"
+                        new_value_str = yaml.dump(new_value, default_flow_style=False).strip()
+                        print(f"Updating {path} with value: {new_value_str}")
+                        cmd = ["dasel", "put", "-f", manifest_file, "-r", "yaml", "-s", path, "-v", new_value_str]
+                        subprocess.run(cmd, check=True)
+                        updated = True
+                if not updated:
+                    print(f"Warning: Key '{sub_key}' not found in any element of list under '{top_key}'")
+        else:
+            print(f"Warning: Expected a dictionary in list for key '{top_key}', got: {rep_item}")
+
+def replace_value_in_dict(manifest_file, top_key, rep_val_dict):
+    """
+    For a top-level key whose replacement value is a dict,
+    update each nested key in the manifest.
+    """
+    for sub_key, new_value in rep_val_dict.items():
+        path = f"{top_key}.{sub_key}"
+        new_value_str = yaml.dump(new_value, default_flow_style=False).strip()
+        print(f"Updating {path} with value: {new_value_str}")
+        cmd = ["dasel", "put", "-f", manifest_file, "-r", "yaml", "-s", path, "-v", new_value_str]
+        subprocess.run(cmd, check=True)
+
+def replace_scalar(manifest_file, top_key, rep_val):
+    """Update a top-level scalar value in the manifest."""
+    # new_value_str = yaml.dump(rep_val, default_flow_style=False).strip()
+    print(f"Updating {top_key} with value: {rep_val}")
+    # cmd = ["dasel", "put", "-f", manifest_file, "-r", "yaml", "-s", path, "-v", new_value_str]
+    cmd = [
+    "dasel", 
+    "put", 
+    "--file", manifest_file, 
+    "--read", "yaml", 
+    "--selector", top_key,
+    "--type", "yaml",
+    "--value", rep_val,
+    "--write", "yaml",
+    ]
+    subprocess.run(cmd, check=True)
+
+def update_manifest(manifest_file, values_file):
+    """
+    Update the manifest with replacement values from the values file.
+    
+    For each top-level key:
+      - Insert the entire subtree if the key doesn't exist.
+      - If it exists:
+          - If the replacement value is a list, update each matching item by index.
+          - If it's a dict, update each nested key.
+          - If it's a scalar, replace the entire key.
+    """
+    with open(values_file, 'r') as f:
+        replacements = yaml.safe_load(f)
+
+    print(f"replacements: {replacements}")
+
+    with open(manifest_file, 'r') as f:
+        manifest_data = yaml.safe_load(f)
+
+
+    for top_key, rep_val in replacements.items():
+        print(f"Looking through top_key: {top_key}")
+        print(f"our rep_val is {rep_val}")
+
+        if top_key not in manifest_data:
+            print(f"top_key {top_key} is NOT in mainfest_data {manifest_data}")
+            print(f"need to insert entire subtree into manifest.")
+            insert_entire_subtree(manifest_file, top_key, rep_val)
+        else:
+            print(f"top_key {top_key} is YES in mainfest_data {manifest_data}")
+            manifest_val = manifest_data[top_key]
+            if isinstance(rep_val, list): # is rep_val a list
+                print(f"rep_val: {rep_val} is of type list.")
+                if isinstance(manifest_val, list):
+                    print(f"manifest_val: {manifest_val} is of type list.")
+        #            replace_item_in_list(manifest_file, top_key, manifest_val, rep_val)
+                else:
+                    print(f"Error: Expected a list in manifest for key '{top_key}' but found {type(manifest_val)}")
+            elif isinstance(rep_val, dict):
+                print(f"rep_val: {rep_val} is of type list.")
+        #        replace_value_in_dict(manifest_file, top_key, rep_val)
+            else:
+                print(f"rep_val: {rep_val} is of type dict.")
+                replace_scalar(manifest_file, top_key, rep_val)
+
+if __name__ == '__main__':
+    import argparse
+    import os
+    import shutil
+    import subprocess
+
+    parser = argparse.ArgumentParser(
+        description="Wrapper tool for dasel to update/insert YAML values into a manifest"
+    )
+    parser.add_argument('subcommand', choices=['put'],
+                        help="Subcommand: 'put' (currently the only supported action)")
+    parser.add_argument('values_file',
+                        help="Relative or absolute path to the values YAML file (e.g. ./repo/values/manifest-01-values.yaml)")
+    parser.add_argument('manifest_file',
+                        help="Relative or absolute path to the target manifest YAML file (e.g. ./repo/manifest-01/manifest.yaml)")
+    args = parser.parse_args()
+    
+    if args.subcommand == 'put':
+        backup_file = args.manifest_file + ".backup"
+        # If a backup file already exists, remove it before copying
+        if os.path.exists(backup_file):
+            os.remove(backup_file)
+            print(f"Deleted existing backup file: {backup_file}")
+        shutil.copy2(args.manifest_file, backup_file)
+        print(f"Created backup file: {backup_file}")
+        
+        # Run the update process
+        update_manifest(args.manifest_file, args.values_file)
+        
+        # Run a diff command against the backup and the updated manifest
+        diff_cmd = ["diff", backup_file, args.manifest_file]
+        diff_result = subprocess.run(diff_cmd, capture_output=True, text=True)
+        
+        print("Diff between backup and updated manifest:")
+        if diff_result.stdout:
+            print(diff_result.stdout)
+        else:
+            print("No differences found.")
+        
+        # Delete the backup file after diffing
+        if os.path.exists(backup_file):
+            os.remove(backup_file)
+            print(f"Deleted backup file: {backup_file}")

@@ -1,0 +1,12 @@
+first: newgoo
+overall:
+  - name: example1
+    replaceable_a: oldvalue
+    keep_this: safe
+  - name: example2
+    replaceable_b: oldvalue
+    replaceable_c: oldvalue
+    something_else: untouched
+newtoplevel:
+  this: isablock
+  with: afewnewkeys
