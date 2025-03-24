@@ -1,4 +1,4 @@
-first: foo
+first: newgoo
 overall:
   - name: example1
     replaceable_a: oldvalue
@@ -6,7 +6,3 @@ overall:
   - name: example2
     replaceable_b: oldvalue
     replaceable_c: oldvalue
-    something_else: untouched
-newtoplevel:
-  this: isablock
-  with: afewnewkeys
