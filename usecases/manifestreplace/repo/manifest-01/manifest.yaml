@@ -1,4 +1,4 @@
-first: newgoo
+first: replaceablefoo
 overall:
   - name: example1
     replaceable_a: oldvalue
@@ -7,6 +7,5 @@ overall:
     replaceable_b: oldvalue
     replaceable_c: oldvalue
     something_else: untouched
-newtoplevel:
-  this: isablock
-  with: afewnewkeys
+another:
+  nonlistkey: replacablevalue

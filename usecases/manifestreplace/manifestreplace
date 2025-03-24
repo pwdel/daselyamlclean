@@ -35,7 +35,16 @@ def replace_item_in_list(manifest_file, top_key, manifest_list, rep_list):
                         path = f"{top_key}.[{idx}].{sub_key}"
                         new_value_str = yaml.dump(new_value, default_flow_style=False).strip()
                         print(f"Updating {path} with value: {new_value_str}")
-                        cmd = ["dasel", "put", "-f", manifest_file, "-r", "yaml", "-s", path, "-v", new_value_str]
+                        cmd = [
+                            "dasel", 
+                            "put", 
+                            "--file", manifest_file, 
+                            "--read", "yaml", 
+                            "--selector", path,
+                            "--type", "yaml",
+                            "--value", new_value_str,
+                            "--write", "yaml",
+                        ]
                         subprocess.run(cmd, check=True)
                         updated = True
                 if not updated:
@@ -52,23 +61,31 @@ def replace_value_in_dict(manifest_file, top_key, rep_val_dict):
         path = f"{top_key}.{sub_key}"
         new_value_str = yaml.dump(new_value, default_flow_style=False).strip()
         print(f"Updating {path} with value: {new_value_str}")
-        cmd = ["dasel", "put", "-f", manifest_file, "-r", "yaml", "-s", path, "-v", new_value_str]
+        cmd = [
+            "dasel", 
+            "put", 
+            "--file", manifest_file, 
+            "--read", "yaml", 
+            "--selector", path,
+            "--type", "yaml",
+            "--value", new_value_str,
+            "--write", "yaml",
+        ]
         subprocess.run(cmd, check=True)
 
 def replace_scalar(manifest_file, top_key, rep_val):
     """Update a top-level scalar value in the manifest."""
     # new_value_str = yaml.dump(rep_val, default_flow_style=False).strip()
     print(f"Updating {top_key} with value: {rep_val}")
-    # cmd = ["dasel", "put", "-f", manifest_file, "-r", "yaml", "-s", path, "-v", new_value_str]
     cmd = [
-    "dasel", 
-    "put", 
-    "--file", manifest_file, 
-    "--read", "yaml", 
-    "--selector", top_key,
-    "--type", "yaml",
-    "--value", rep_val,
-    "--write", "yaml",
+        "dasel", 
+        "put", 
+        "--file", manifest_file, 
+        "--read", "yaml", 
+        "--selector", top_key,
+        "--type", "yaml",
+        "--value", rep_val,
+        "--write", "yaml",
     ]
     subprocess.run(cmd, check=True)
 
@@ -99,7 +116,7 @@ def update_manifest(manifest_file, values_file):
         if top_key not in manifest_data:
             print(f"top_key {top_key} is NOT in mainfest_data {manifest_data}")
             print(f"need to insert entire subtree into manifest.")
-            insert_entire_subtree(manifest_file, top_key, rep_val)
+            # insert_entire_subtree(manifest_file, top_key, rep_val)
         else:
             print(f"top_key {top_key} is YES in mainfest_data {manifest_data}")
             manifest_val = manifest_data[top_key]
@@ -107,15 +124,15 @@ def update_manifest(manifest_file, values_file):
                 print(f"rep_val: {rep_val} is of type list.")
                 if isinstance(manifest_val, list):
                     print(f"manifest_val: {manifest_val} is of type list.")
-        #            replace_item_in_list(manifest_file, top_key, manifest_val, rep_val)
+                    # replace_item_in_list(manifest_file, top_key, manifest_val, rep_val)
                 else:
                     print(f"Error: Expected a list in manifest for key '{top_key}' but found {type(manifest_val)}")
             elif isinstance(rep_val, dict):
                 print(f"rep_val: {rep_val} is of type list.")
-        #        replace_value_in_dict(manifest_file, top_key, rep_val)
+                replace_value_in_dict(manifest_file, top_key, rep_val)
             else:
                 print(f"rep_val: {rep_val} is of type dict.")
-                replace_scalar(manifest_file, top_key, rep_val)
+                # replace_scalar(manifest_file, top_key, rep_val)
 
 if __name__ == '__main__':
     import argparse

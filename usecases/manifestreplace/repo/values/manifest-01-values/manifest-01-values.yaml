@@ -4,3 +4,5 @@ newtoplevel:
   this: isablock
   with: afewnewkeys
 first: newgoo
+another:
+    nonlistkey: newfoogoo
