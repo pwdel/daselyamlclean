@@ -5,8 +5,8 @@ import yaml
 import argparse
 import shutil
 import os
+import re
 from datetime import datetime
-
 
 def dasel_read(manifest_file, selector):
     """
@@ -153,6 +153,18 @@ def create_backup(manifest_file):
     print(f"Created backup file: {backup_file}")
     return backup_file
 
+def replace_nulls_with_tilde(file_path):
+    """
+    Reads the file at file_path and replaces any occurrence of
+    "null", "Null", or "NULL" (as whole words) with "~".
+    """
+    with open(file_path, 'r') as f:
+        contents = f.read()
+    # Use a regex to replace null specifiers with "~".
+    new_contents = re.sub(r'\b(?:null|Null|NULL)\b', '~', contents)
+    with open(file_path, 'w') as f:
+        f.write(new_contents)
+
 def insert_blank_lines_between_keys(file_path):
     """
     Reads the YAML file at file_path and writes it back with a blank line
@@ -174,6 +186,23 @@ def insert_blank_lines_between_keys(file_path):
 
     with open(file_path, 'w') as f:
         f.writelines(new_lines)
+
+def validate_manifest(manifest_file):
+    """
+    Validates the manifest file using dasel validate.
+    Prints a formatted PASS or FAIL message with asterisks.
+    """
+    cmd = ["dasel", "validate", manifest_file]
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    
+    # Use stdout if available, else stderr.
+    output = result.stdout.strip() if result.stdout else result.stderr.strip()
+    
+    border = "*" * 40
+    if result.returncode == 0:
+        print(f"\n{border}\nPASS: {output}\n{border}\n")
+    else:
+        print(f"\n{border}\nFAIL: {output}\n{border}\n")
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="YAML update tool using dasel")
@@ -203,6 +232,8 @@ if __name__ == '__main__':
         print("Error: --updates_dir must be provided")
         exit(1)
 
+    replace_nulls_with_tilde(args.manifest_file)
+
     print("Inserting blank lines between top level key dicts.")
     insert_blank_lines_between_keys(args.manifest_file)
 
@@ -217,3 +248,6 @@ if __name__ == '__main__':
     if os.path.exists(backup_file):
         os.remove(backup_file)
         print(f"Deleted backup file: {backup_file}")
+
+    validate_manifest(args.manifest_file)
+

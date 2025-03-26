@@ -2,7 +2,7 @@ doNotTouch: this/one
 
 alsoDoNotTouch:
   thisBlock: 1
-  withOther: null
+  withOther: ~
   things:
     - inAList: ./ofStuff
       andKeys: thatWeUse
