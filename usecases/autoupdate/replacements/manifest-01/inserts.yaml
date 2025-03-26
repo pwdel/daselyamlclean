@@ -1,0 +1,10 @@
+firstThing:
+- timestampA: "YYYYMMDD"
+  fizz: buzz
+
+whateverThing:
+- timestampX: "YYYYMMDD"
+  timestampY: "YYYYMMDD"
+  anotherBlah: "heyNowString"
+  countyThing: "1"
+  numberThing: 1000
