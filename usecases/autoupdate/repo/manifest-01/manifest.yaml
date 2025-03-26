@@ -1,0 +1,36 @@
+doNotTouch: this/one
+
+alsoDoNotTouch:
+  thisBlock: 1
+  withOther: null
+  things:
+    - inAList: ./ofStuff
+      andKeys: thatWeUse
+    - inAList: ./newStuff
+      andKeys: weDoNotUse
+
+firstThing:
+  - fizz: buzz
+    timestampA: "19691231"
+  - fizz: buzz
+    timestampA: "20250326"
+
+whateverThing:
+  - anotherBlah: heyNowString
+    countyThing: "1"
+    numberThing: 1000
+    timestampX: "19691231"
+    timestampY: "19691231"
+  - anotherBlah: heyNowString
+    countyThing: "1"
+    numberThing: 1000
+    timestampX: "19700101"
+    timestampY: "19700101"
+  - anotherBlah: heyNowString
+    countyThing: "1"
+    numberThing: 1000
+    timestampX: "20250326"
+    timestampY: "20250326"
+
+pointstop:
+  markerPoint: 20250326

@@ -1,0 +1,219 @@
+#!/usr/bin/env python3
+
+import subprocess
+import yaml
+import argparse
+import shutil
+import os
+from datetime import datetime
+
+
+def dasel_read(manifest_file, selector):
+    """
+    Helper function to run a dasel get command and return the output.
+    """
+    cmd = [
+        "dasel",
+        "--file", manifest_file,
+        "--read", "yaml",
+        "--selector", selector,
+        "--type", "yaml"
+    ]
+    result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+    return result.stdout.strip()
+
+
+def dasel_put(manifest_file, selector, value, dump_value=True):
+    """
+    Helper function to run a dasel put command.
+    If dump_value is True, the value is converted to YAML via yaml.dump;
+    otherwise it is used directly.
+    """
+    if dump_value:
+        value_str = yaml.dump(value, default_flow_style=False).strip()
+    else:
+        value_str = str(value)
+    cmd = [
+        "dasel", 
+        "put", 
+        "--file", manifest_file, 
+        "--read", "yaml", 
+        "--selector", selector,
+        "--type", "yaml",
+        "--value", value_str,
+        "--write", "yaml",
+    ]
+    print(f"Running command: {' '.join(cmd)}")
+    subprocess.run(cmd, check=True)
+
+def get_list_length(manifest_file, key):
+    """
+    Reads the manifest file and returns the number of items in the list under `key`.
+    If the key doesn't exist or isn't a list, returns 0.
+    """
+    with open(manifest_file, 'r') as f:
+        data = yaml.safe_load(f)
+    if key in data and isinstance(data[key], list):
+        return len(data[key])
+    else:
+        return 0
+
+def append_to_list(manifest_file, key, new_item):
+    """
+    Append a new item to the list under `key` in the manifest file.
+    Reads the entire list from the file, appends the new item,
+    then writes back the updated list using dasel.
+    """
+    with open(manifest_file, 'r') as f:
+        data = yaml.safe_load(f)
+    if key in data and isinstance(data[key], list):
+        updated_list = data[key] + [new_item]
+        print(f"Appending new item to {key}: {new_item}")
+        # Write the updated list back to the top-level key using dasel.
+        dasel_put(manifest_file, key, updated_list)
+    else:
+        print(f"Error: {key} is not present or not a list in {manifest_file}")
+
+
+def resolve_date(value):
+    """
+    If the provided value is the signifier "YYYYMMDD", convert it to today's date.
+    Otherwise, return the value unchanged.
+    """
+    if isinstance(value, str) and value.strip() == "YYYYMMDD":
+        return datetime.now().strftime("%Y%m%d")
+    return value
+
+def update_replacements(manifest_file, replacements_file):
+    """
+    Update existing values in the manifest based on the replacements file.
+    The file should be structured like:
+    
+      pointstop:
+        markerPoint: "YYYYMMDD"
+      
+    Each occurrence of "YYYYMMDD" is replaced with today's date.
+    """
+    with open(replacements_file, 'r') as f:
+        repl_data = yaml.safe_load(f)
+    for top_key, sub_data in repl_data.items():
+        if isinstance(sub_data, dict):
+            for sub_key, value in sub_data.items():
+                resolved_date = resolve_date(value)
+                selector = f"{top_key}.{sub_key}"
+                dasel_put(manifest_file, selector, resolved_date, dump_value=False)
+        else:
+            resolved_date = resolve_date(sub_data)
+            dasel_put(manifest_file, top_key, resolved_date, dump_value=False)
+
+def update_inserts(manifest_file, inserts_file):
+    """
+    For each top-level key in the inserts file, duplicate its template item (resolving any "YYYYMMDD")
+    and append it to the corresponding list in the manifest.
+    
+    The file might look like:
+    
+      firstThing:
+        - timestampA: "YYYYMMDD"
+          fizz: buzz
+    
+      whateverThing:
+        - timestampX: "YYYYMMDD"
+          timestampY: "YYYYMMDD"
+          anotherBlah: "heyNowString"
+          countyThing: "1"
+          numberThing: 1000
+    """
+    with open(inserts_file, 'r') as f:
+        inserts_data = yaml.safe_load(f)
+    for top_key, list_items in inserts_data.items():
+        if not isinstance(list_items, list):
+            print(f"Warning: Expected a list for inserts in key '{top_key}' but got {type(list_items)}")
+            continue
+        for item in list_items:
+            if isinstance(item, dict):
+                new_item = {}
+                for sub_key, value in item.items():
+                    new_item[sub_key] = resolve_date(value)
+                append_to_list(manifest_file, top_key, new_item)
+            else:
+                print(f"Warning: Expected a dictionary in the list for key '{top_key}', got {item}")
+
+def create_backup(manifest_file):
+    """
+    Creates a backup of the manifest file by appending '.backup' to its name.
+    If a backup already exists, it is removed first.
+    Returns the backup file path.
+    """
+    backup_file = manifest_file + ".backup"
+    if os.path.exists(backup_file):
+        os.remove(backup_file)
+        print(f"Deleted existing backup file: {backup_file}")
+    shutil.copy2(manifest_file, backup_file)
+    print(f"Created backup file: {backup_file}")
+    return backup_file
+
+def insert_blank_lines_between_keys(file_path):
+    """
+    Reads the YAML file at file_path and writes it back with a blank line
+    inserted before each top-level key (i.e. lines that start without whitespace).
+    """
+    with open(file_path, 'r') as f:
+        lines = f.readlines()
+
+    new_lines = []
+    first = True
+    for line in lines:
+        # If the line is non-empty, has no leading whitespace (a top-level key),
+        # and it's not the very first line, ensure the previous line is blank.
+        if not first and line and line[0] not in (' ', '\t') and line.strip() != "":
+            if new_lines and new_lines[-1].strip() != "":
+                new_lines.append("\n")
+        new_lines.append(line)
+        first = False
+
+    with open(file_path, 'w') as f:
+        f.writelines(new_lines)
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description="YAML update tool using dasel")
+    parser.add_argument('subcommand', choices=['put'],
+                        help="Subcommand: 'put' (currently the only supported action)")
+    parser.add_argument('manifest_file',
+                        help="Path to the target manifest YAML file (e.g. repo/manifest-01/manifest.yaml)")
+    parser.add_argument('--updates_dir',
+                        help="Directory containing replacements.yaml and inserts.yaml")
+    args = parser.parse_args()
+
+    backup_file = create_backup(args.manifest_file)
+
+    print("Updating the datecode replacements and block inserts.")
+    if args.updates_dir:
+        replacements_file = os.path.join(args.updates_dir, "replacements.yaml")
+        inserts_file = os.path.join(args.updates_dir, "inserts.yaml")
+        if os.path.exists(replacements_file):
+            update_replacements(args.manifest_file, replacements_file)
+        else:
+            print(f"Replacements file not found: {replacements_file}")
+        if os.path.exists(inserts_file):
+            update_inserts(args.manifest_file, inserts_file)
+        else:
+            print(f"Inserts file not found: {inserts_file}")
+    else:
+        print("Error: --updates_dir must be provided")
+        exit(1)
+
+    print("Inserting blank lines between top level key dicts.")
+    insert_blank_lines_between_keys(args.manifest_file)
+
+    print("Showing diff and creating backup.")
+    diff_cmd = ["diff", backup_file, args.manifest_file]
+    diff_result = subprocess.run(diff_cmd, capture_output=True, text=True)
+    print("Diff between backup and updated manifest:")
+    if diff_result.stdout:
+        print(diff_result.stdout)
+    else:
+        print("No differences found.")
+    if os.path.exists(backup_file):
+        os.remove(backup_file)
+        print(f"Deleted backup file: {backup_file}")
