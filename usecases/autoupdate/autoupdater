@@ -205,7 +205,7 @@ def validate_manifest(manifest_file):
         print(f"\n{border}\nFAIL: {output}\n{border}\n")
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description="YAML update tool using dasel")
+    parser = argparse.ArgumentParser(description="YAML update tool")
     parser.add_argument('subcommand', choices=['put'],
                         help="Subcommand: 'put' (currently the only supported action)")
     parser.add_argument('manifest_file',

@@ -1,0 +1,98 @@
+#!/usr/bin/env python3
+
+import subprocess
+import yaml
+import argparse
+import shutil
+import os
+import re
+from datetime import datetime
+
+def create_backup(manifest_file):
+    """
+    Creates a backup of the manifest file by appending '.backup' to its name.
+    If a backup already exists, it is removed first.
+    Returns the backup file path.
+    """
+    backup_file = manifest_file + ".backup"
+    if os.path.exists(backup_file):
+        os.remove(backup_file)
+        print(f"Deleted existing backup file: {backup_file}")
+    shutil.copy2(manifest_file, backup_file)
+    print(f"Created backup file: {backup_file}")
+    return backup_file
+
+def dasel_read(manifest_file, selector=""):
+    """
+    Helper function to run a dasel get command and return the output.
+    If selector is empty, the "--selector" flag is omitted.
+    """
+    cmd = [
+        "dasel",
+        "--file", manifest_file,
+        "--read", "yaml"
+    ]
+    if selector:
+        cmd.extend(["--selector", selector])
+    result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+    return result.stdout.strip()
+
+def get_toplevel_keys(file_path):
+    """
+    Uses dasel_read on the provided file (with an empty selector)
+    to extract the top-level keys from the YAML.
+    For example, if the file contains:
+      firstThing: null
+      whateverThing: null
+    then this function returns ["firstThing", "whateverThing"].
+    """
+    output = dasel_read(file_path, "")
+    # Use regex to capture keys at the start of a line
+    keys = re.findall(r'^(\S+):', output, re.MULTILINE)
+    return keys
+
+def print_list_count_for_key(manifest_file, key):
+    """
+    Uses dasel_read to read the YAML for the given key from the manifest file,
+    then loads it and prints the number of entries if it's a list.
+    """
+    # Read the YAML for the key using dasel.
+    output = dasel_read(manifest_file, key)
+    try:
+        data = yaml.safe_load(output)
+    except Exception as e:
+        print(f"Error loading YAML from output: {e}")
+        return
+
+    if isinstance(data, list):
+        print(f"Key '{key}' has {len(data)} entries.")
+    else:
+        print(f"Key '{key}' does not contain a list. Found type: {type(data)}")
+        
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description="YAML update tool")
+    parser.add_argument('subcommand', choices=['put'],
+                        help="Subcommand: 'put' (currently the only supported action)")
+    parser.add_argument('manifest_file',
+                        help="Path to the target manifest YAML file (e.g. repo/manifest-01/manifest.yaml)")
+    parser.add_argument('--replacements_dir',
+                        help="Directory containing updates (not used in this minimal example)")
+    args = parser.parse_args()
+
+    if not args.manifest_file:
+        print("Error: manifest_file must be provided")
+        exit(1)
+
+    if not args.replacements_dir:
+        print("Error: --replacements_dir must be provided")
+        exit(1)
+
+    backup_file = create_backup(args.manifest_file)
+
+    replacements_file = args.replacements_dir + '/listincrement.yaml'
+    print(f"replacements_file: {replacements_file}")
+    keys = get_toplevel_keys(replacements_file)
+    print("Top-level keys found in listincrement.yaml:", keys)
+
+    for key in keys:
+        print_list_count_for_key(args.manifest_file, key)
