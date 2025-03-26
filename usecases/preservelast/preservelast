@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
 import subprocess
-import yaml
 import argparse
 import shutil
 import os
@@ -37,6 +36,25 @@ def dasel_read(manifest_file, selector=""):
     result = subprocess.run(cmd, capture_output=True, text=True, check=True)
     return result.stdout.strip()
 
+def dasel_count(manifest_file, key):
+    """
+    Helper function to run a dasel get command that uses the count() function on the given key.
+    For example, if key is "whateverThing", this function will run:
+    
+      dasel --file <manifest_file> --read yaml --selector 'whateverThing.all().count()' --type yaml
+      
+    and return the output.
+    """
+    selector = f"{key}.all().count()"
+    cmd = [
+        "dasel",
+        "--file", manifest_file,
+        "--read", "yaml",
+        "--selector", selector,
+    ]
+    result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+    return result.stdout.strip()
+
 def get_toplevel_keys(file_path):
     """
     Uses dasel_read on the provided file (with an empty selector)
@@ -51,24 +69,23 @@ def get_toplevel_keys(file_path):
     keys = re.findall(r'^(\S+):', output, re.MULTILINE)
     return keys
 
-def print_list_count_for_key(manifest_file, key):
+def get_list_count_for_keys(manifest_file, keys):
     """
-    Uses dasel_read to read the YAML for the given key from the manifest file,
-    then loads it and prints the number of entries if it's a list.
+    For each key in the provided list, use dasel_count to retrieve the count of list items
+    from the manifest file. Returns a dict mapping each key to its list count (as an integer)
+    or None if an error occurs.
     """
-    # Read the YAML for the key using dasel.
-    output = dasel_read(manifest_file, key)
-    try:
-        data = yaml.safe_load(output)
-    except Exception as e:
-        print(f"Error loading YAML from output: {e}")
-        return
+    counts = {}
+    for key in keys:
+        try:
+            count_output = dasel_count(manifest_file, key)
+            counts[key] = int(count_output)
+        except Exception as e:
+            print(f"Error retrieving count for key '{key}': {e}")
+            counts[key] = None
+    return counts
 
-    if isinstance(data, list):
-        print(f"Key '{key}' has {len(data)} entries.")
-    else:
-        print(f"Key '{key}' does not contain a list. Found type: {type(data)}")
-        
+
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="YAML update tool")
     parser.add_argument('subcommand', choices=['put'],
@@ -90,9 +107,6 @@ if __name__ == '__main__':
     backup_file = create_backup(args.manifest_file)
 
     replacements_file = args.replacements_dir + '/listincrement.yaml'
-    print(f"replacements_file: {replacements_file}")
     keys = get_toplevel_keys(replacements_file)
-    print("Top-level keys found in listincrement.yaml:", keys)
-
-    for key in keys:
-        print_list_count_for_key(args.manifest_file, key)
+    counts = get_list_count_for_keys(args.manifest_file, keys)
+    print("List counts for keys:", counts)
