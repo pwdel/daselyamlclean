@@ -4,10 +4,10 @@ alsoDoNotTouch:
   thisBlock: 1
   withOther: ~
   things:
-    - inAList: ./ofStuff
-      andKeys: thatWeUse
-    - inAList: ./newStuff
-      andKeys: weDoNotUse
+    - inAList: ./ofStuff # with comments
+      andKeys: thatWeUse # and other junk
+    - inAList: ./newStuff # that should not
+      andKeys: weDoNotUse # get overwritten
 
 firstThing:
 - timestampA: "19691231"
@@ -25,5 +25,5 @@ whateverThing:
   countyThing: "1"
   numberThing: 1000
 
-pointstop:
+pointStop:
   markerPoint: "19700101"
