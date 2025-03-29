@@ -311,8 +311,6 @@ def insert_input_str_lines(file_path: str, input_list: list[dict[str, str]], ins
     return "".join(new_lines)
 
 
-
-
 def check_dates_in_data(data: dict[str, list[dict[str, str]]]) -> None:
     """
     Updates the dates in the data structure and prints the final updated data structure for each top-level key.
