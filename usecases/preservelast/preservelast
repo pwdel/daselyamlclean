@@ -190,23 +190,76 @@ def update_dates_in_data(data: dict[str, list[dict[str, str]]]) -> dict[str, lis
         updated_data[outer_key] = updated_list
     return updated_data
 
+
+def find_yaml_block_indices(file_path: str, target_key: str) -> tuple[int, int]:
+    """
+    Finds the start and end indices of the block corresponding to the target key in a YAML file.
+
+    The block is defined as the lines following the target key's definition (i.e. the line after 
+    "target_key:") until the next top-level key is encountered. A new top-level key is detected if a 
+    non-empty line (after stripping) starts at column 0 and does not start with a dash ('-').
+
+    Args:
+        file_path: Path to the YAML file.
+        target_key: The top-level key whose block indices should be found.
+
+    Returns:
+        A tuple (start_index, end_index) where:
+          - start_index is the index of the first line of the target key's block (i.e. immediately after the key line).
+          - end_index is the index of the first line of the next top-level key, or len(lines) if none is found.
+
+    Raises:
+        ValueError: If the target key is not found in the file.
+    """
+    with open(file_path, 'r') as f:
+        lines = f.readlines()
+
+    # Locate the target key's definition.
+    key_index = None
+    for i, line in enumerate(lines):
+        # A top-level key should start at the left margin and be followed by a colon.
+        if line.lstrip() == line and line.startswith(target_key + ":"):
+            key_index = i
+            break
+
+    if key_index is None:
+        raise ValueError(f"Key '{target_key}' not found in file.")
+
+    # The block is assumed to start immediately after the key definition.
+    start_index = key_index + 1
+
+    # Find the first line after the block that is a new top-level key.
+    end_index = None
+    for j in range(start_index, len(lines)):
+        # Strip leading whitespace for checking.
+        stripped = lines[j].lstrip()
+        # If the line is non-empty, its first non-space character is not '-' (i.e. not a list item),
+        # and the line starts at column 0, we assume it's a new top-level key.
+        if lines[j].strip() and lines[j][0] != ' ' and not stripped.startswith('-'):
+            end_index = j
+            break
+    if end_index is None:
+        end_index = len(lines)
+
+    return start_index, end_index
+
+
 def list_item_to_yaml_str(list_item: list[dict[str, str]]) -> str:
     """
-    Merges a list of single-key dictionaries into one ordered mapping and returns a YAML-formatted string.
-    The YAML output is a single list item, for example:
-    
-    - timestampX: "20250327"
-      timestampY: "20250327"
-      anotherBlah: "heyNowString"
-      countyThing: "1"
-      numberThing: "1000"
+    Merges a list of one-key dictionaries into one mapping and returns a YAML-formatted string.
+    For example, given:
+      [{'timestampX': '20250329'}, {'timestampY': '20250329'}, {'anotherBlah': 'heyNowString'}, {'countyThing': '1'}, {'numberThing': '1000'}]
+    this returns:
+      - timestampX: "20250329"
+        timestampY: "20250329"
+        anotherBlah: "heyNowString"
+        countyThing: "1"
+        numberThing: "1000"
     """
-    # Merge the dictionaries in order.
     merged = {}
     for d in list_item:
         merged.update(d)
     
-    # Build YAML string lines.
     lines = []
     first = True
     for key, value in merged.items():
@@ -216,6 +269,49 @@ def list_item_to_yaml_str(list_item: list[dict[str, str]]) -> str:
         else:
             lines.append(f"  {key}: \"{value}\"")
     return "\n".join(lines)
+
+
+def insert_input_str_lines(file_path: str, input_list: list[dict[str, str]], insertion_index: int) -> str:
+    """
+    Reads the file at file_path and inserts a YAML block—created from input_list—at insertion_index.
+    
+    The input_list is a list of dictionaries (each with one key/value) that will be merged into a single YAML list item.
+    The resulting YAML block will have a trailing newline, and an extra line with a single space is appended.
+    The new block is inserted without overwriting any existing lines.
+    
+    Args:
+        file_path: Path to the input file.
+        input_list: A list of dictionaries to be converted to a YAML-formatted block.
+        insertion_index: The line number where the new block will be inserted.
+                         (For example, if your block indices tuple is (16, 27), use 27.)
+    
+    Returns:
+        A string containing the modified file content.
+    """
+    with open(file_path, 'r') as f:
+        lines = f.readlines()
+    
+    # Convert the input list to a YAML-formatted string.
+    yaml_str = list_item_to_yaml_str(input_list)
+    
+    # Ensure yaml_str ends with a newline.
+    if not yaml_str.endswith("\n"):
+        yaml_str += "\n"
+    
+    # Append an extra line with a single space.
+    yaml_str += " \n"
+    
+    # Optionally: If the line at insertion_index is blank, remove it.
+    if insertion_index < len(lines) and lines[insertion_index].strip() == "":
+        del lines[insertion_index]
+    
+    # Insert the new YAML block at the specified index.
+    # lines_up_to_yaml_string + yaml_string + rest_of_lines
+    new_lines = lines[:insertion_index-1] + [yaml_str] + lines[insertion_index:]
+    return "".join(new_lines)
+
+
+
 
 def check_dates_in_data(data: dict[str, list[dict[str, str]]]) -> None:
     """
@@ -260,7 +356,9 @@ if __name__ == '__main__':
 
     updated_data = update_dates_in_data(keyvalues)
 
-    print(updated_data)
+    print(f"updated_data: {updated_data}")
 
-    print(list_item_to_yaml_str(updated_data['whateverThing']))
+    start_index, end_index = find_yaml_block_indices(args.manifest_file, 'whateverThing')
+    print(start_index, end_index)
 
+    print(insert_input_str_lines(args.manifest_file, updated_data['whateverThing'], end_index))
