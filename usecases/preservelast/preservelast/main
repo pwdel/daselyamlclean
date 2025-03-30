@@ -6,7 +6,7 @@ from dasel.dasel_helpers import dasel_read
 from datestring.datestring import update_if_valid_date_or_suffix
 from yaml_toplevel.yaml_toplevel import get_toplevel_keys, determine_key_contents
 from yaml_list_helpers.yaml_list_helpers import get_last_list_index_for_key, get_list_item_key_values
-
+from yaml_dict_helpers.yaml_dict_helpers import get_dict_item_key_values
 
 def update_dict_key_dates(manifest_file: str, keys: list[str]) -> dict[str, str]:
     """
@@ -232,19 +232,22 @@ if __name__ == '__main__':
     keys = get_toplevel_keys(replacements_file)
 
     keys_with_list_as_values, keys_with_dict_as_values = determine_key_contents(args.manifest_file, keys)
-    print(f"keys_with_list_as_values, keys_with_dict_as_values: {keys_with_list_as_values}. {keys_with_dict_as_values}")
-
-    # Updating datestrings within specified Dicts
-    updated_dict_dates = update_dict_key_dates(args.manifest_file, keys_with_dict_as_values)
-    print(f"updated_dict_dates {updated_dict_dates}")
-
+  
     # Updating Lists
     counts = get_last_list_index_for_key(args.manifest_file, keys_with_list_as_values)
-    print("Last index for list under key:", counts)
-    keyvalues = get_list_item_key_values(args.manifest_file, counts)
-    print(f"keyvalues: {keyvalues}")
-    updated_list_dates = update_dates_in_data(keyvalues)
+    print("Last index for list under key, counts:", counts)
+    list_item_key_values = get_list_item_key_values(args.manifest_file, counts)
+    print(f"list_item_key_values: {list_item_key_values}")
+    updated_list_dates = update_dates_in_data(list_item_key_values)
     print(f"updated_list_dates: {updated_list_dates}")
+
+    print(f"keys_with_dict_as_values: {keys_with_dict_as_values}")
+    # mirroring what we have above, we need a way to put all lines for a given key into lists
+    dict_item_key_values = get_dict_item_key_values(args.manifest_file, keys_with_dict_as_values)
+    print(f"dict_item_key_values: {dict_item_key_values}")
+    # ok now that we have it in the proper format, update dates
+    updated_dict_dates = update_dates_in_data(dict_item_key_values)
+    print(f"updated_dict_dates: {updated_dict_dates}")
 
     lines_snapshot, block_indicies = find_yaml_block_indices_for_all(args.manifest_file, updated_list_dates)
     print(f"block_indicies: {block_indicies}")
