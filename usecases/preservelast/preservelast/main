@@ -50,6 +50,14 @@ if __name__ == '__main__':
     updated_dict_dates = update_dates_in_data(dict_item_key_values)
     print(f"updated_dict_dates: {updated_dict_dates}")
 
+
+    combined_updated_dates = {**updated_list_dates, **updated_dict_dates}
+    print(f"combined_updated_dates: {combined_updated_dates}")
+
+    both_lines_snapshot, combined_block_indicies = find_yaml_block_indices_for_all(args.manifest_file, combined_updated_dates)
+    print(f"both_lines_snapshot: {both_lines_snapshot}")
+    print(f"combined_block_indicies: {combined_block_indicies}")
+
     list_lines_snapshot, list_block_indicies = find_yaml_block_indices_for_all(args.manifest_file, updated_list_dates)
     print(f"list_block_indicies: {list_block_indicies}")
 
