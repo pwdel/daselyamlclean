@@ -42,3 +42,29 @@ def get_list_item_key_values(manifest_file: str, counts_dict: Dict[str, int]) ->
                     line_dicts.append({k: v})
         result[key] = line_dicts
     return result
+
+def list_item_to_yaml_str(list_item: list[dict[str, str]]) -> str:
+    """
+    Merges a list of one-key dictionaries into one mapping and returns a YAML-formatted string.
+    For example, given:
+      [{'timestampX': '20250329'}, {'timestampY': '20250329'}, {'anotherBlah': 'heyNowString'}, {'countyThing': '1'}, {'numberThing': '1000'}]
+    this returns:
+      - timestampX: "20250329"
+        timestampY: "20250329"
+        anotherBlah: "heyNowString"
+        countyThing: "1"
+        numberThing: "1000"
+    """
+    merged = {}
+    for d in list_item:
+        merged.update(d)
+    
+    lines = []
+    first = True
+    for key, value in merged.items():
+        if first:
+            lines.append(f"- {key}: \"{value}\"")
+            first = False
+        else:
+            lines.append(f"  {key}: \"{value}\"")
+    return "\n".join(lines)

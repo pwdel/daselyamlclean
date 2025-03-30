@@ -1,212 +1,13 @@
 #!/usr/bin/env python3
 
 import argparse
-from backup.create_backup import create_backup
-from dasel.dasel_helpers import dasel_read
-from datestring.datestring import update_if_valid_date_or_suffix
+from filereadwrite.create_backup import create_backup
+from date_helper.date_helper import update_dates_in_data
 from yaml_toplevel.yaml_toplevel import get_toplevel_keys, determine_key_contents
 from yaml_list_helpers.yaml_list_helpers import get_last_list_index_for_key, get_list_item_key_values
 from yaml_dict_helpers.yaml_dict_helpers import get_dict_item_key_values
-
-def update_dict_key_dates(manifest_file: str, keys: list[str]) -> dict[str, str]:
-    """
-    For each top-level key in 'keys' (which are expected to contain dictionary values),
-    this function retrieves its YAML content using dasel_read(), parses the key–value pairs,
-    updates any valid date (or date with suffix) using update_if_valid_date_or_suffix,
-    and returns a dictionary mapping the key to its updated YAML string.
-    
-    Args:
-        manifest_file: Path to the YAML manifest file.
-        keys: A list of top-level keys that are expected to have dictionary values.
-    
-    Returns:
-        A dictionary mapping each key in the input list to a string representing the updated YAML content.
-    """
-    updated_results = {}
-    
-    for key in keys:
-        # Use dasel_read to get the content for the key.
-        content = dasel_read(manifest_file, key)
-        # We'll rebuild the content line-by-line.
-        updated_lines = []
-        
-        for line in content.splitlines():
-            # Only process non-empty lines that contain a colon.
-            if line.strip() and ':' in line:
-                parts = line.split(":", 1)
-                sub_key = parts[0].strip()
-                value = parts[1].strip()
-                # Remove surrounding quotes if present.
-                if (value.startswith('"') and value.endswith('"')) or (value.startswith("'") and value.endswith("'")):
-                    value = value[1:-1]
-                # Update the date value if valid.
-                updated_value = update_if_valid_date_or_suffix(value)
-                # Reconstruct the line with updated value in double quotes.
-                updated_lines.append(f"{sub_key}: \"{updated_value}\"")
-            else:
-                updated_lines.append(line)
-        
-        updated_results[key] = "\n".join(updated_lines)
-    
-    return updated_results
-
-
-## UPDATES LISTS
-def update_dates_in_data(data: dict[str, list[dict[str, str]]]) -> dict[str, list[dict[str, str]]]:
-    """
-    Iterates over each key and nested dictionary in 'data' and updates any valid date or date-with-suffix
-    field using update_if_valid_date_or_suffix. Returns the updated data structure.
-    """
-    updated_data = {}
-    for outer_key, list_of_dicts in data.items():
-        updated_list = []
-        for inner_dict in list_of_dicts:
-            updated_inner = {}
-            for sub_key, value in inner_dict.items():
-                updated_inner[sub_key] = update_if_valid_date_or_suffix(value)
-            updated_list.append(updated_inner)
-        updated_data[outer_key] = updated_list
-    return updated_data
-
-
-#### INSERTION SECTION ####
-
-def list_item_to_yaml_str(list_item: list[dict[str, str]]) -> str:
-    """
-    Merges a list of one-key dictionaries into one mapping and returns a YAML-formatted string.
-    For example, given:
-      [{'timestampX': '20250329'}, {'timestampY': '20250329'}, {'anotherBlah': 'heyNowString'}, {'countyThing': '1'}, {'numberThing': '1000'}]
-    this returns:
-      - timestampX: "20250329"
-        timestampY: "20250329"
-        anotherBlah: "heyNowString"
-        countyThing: "1"
-        numberThing: "1000"
-    """
-    merged = {}
-    for d in list_item:
-        merged.update(d)
-    
-    lines = []
-    first = True
-    for key, value in merged.items():
-        if first:
-            lines.append(f"- {key}: \"{value}\"")
-            first = False
-        else:
-            lines.append(f"  {key}: \"{value}\"")
-    return "\n".join(lines)
-
-def find_yaml_block_indices_for_all(
-        file_path: str, 
-        updated_data: dict[str, list[dict[str, str]]]
-        ) -> tuple[list[str], list[tuple[str, int, int]]]:
-    """
-    Reads the file once and finds the start and end indices of the blocks corresponding to each target key 
-    present in updated_data.
-    
-    For each key in updated_data (which should correspond to top-level YAML keys), the block is defined as 
-    the lines following the key's definition (i.e. the line after "key:") until the next top-level key is 
-    encountered (a non-empty line at column 0 that does not start with a dash ('-')) or until end-of-file.
-    
-    Args:
-        file_path: Path to the YAML file.
-        updated_data: A dictionary whose keys are the target keys to be located in the YAML file.
-    
-    Returns:
-        A tuple containing:
-          - A snapshot of the file as a list of strings.
-          - A list of tuples, each tuple being (target_key, start_index, end_index) for that key.
-    
-    Raises:
-        ValueError: If any target key from updated_data is not found in the file.
-    """
-    with open(file_path, 'r') as f:
-        lines = f.readlines()
-    
-    blocks = []
-    for key in updated_data.keys():
-        # Locate the target key's definition.
-        key_index = None
-        for i, line in enumerate(lines):
-            if line.lstrip() == line and line.startswith(key + ":"):
-                key_index = i
-                break
-        if key_index is None:
-            raise ValueError(f"Key '{key}' not found in file.")
-        
-        # The block starts immediately after the key definition.
-        start_index = key_index + 1
-        
-        # Find the first line after the block that is a new top-level key.
-        end_index = None
-        for j in range(start_index, len(lines)):
-            stripped = lines[j].lstrip()
-            if lines[j].strip() and lines[j][0] != ' ' and not stripped.startswith('-'):
-                end_index = j
-                break
-        if end_index is None:
-            end_index = len(lines)
-        
-        blocks.append((key, start_index, end_index))
-    
-    return lines, blocks
-
-def insert_updated_blocks(lines_snapshot: list[str],
-                          block_indicies: list[tuple[str, int, int]],
-                          updated_data: dict[str, list[dict[str, str]]]) -> str:
-    """
-    Inserts updated YAML blocks for each target key into the provided snapshot of file lines.
-
-    For each tuple in block_indicies (of the form (target_key, start_index, end_index)):
-      - Retrieves the updated block from updated_data[target_key].
-      - Converts it into a YAML-formatted string using list_item_to_yaml_str.
-      - Ensures it ends with a newline and appends an extra line with a single space.
-      - Inserts it at the end_index of the block.
-
-    Blocks are inserted in descending order of end_index so that subsequent insertions do not shift earlier indices.
-
-    Args:
-        lines_snapshot: A list of strings representing the file content.
-        block_indicies: A list of tuples, each tuple is (target_key, start_index, end_index)
-                        for a target block.
-        updated_data: A dictionary mapping each target key to a list of dictionaries (the updated block).
-
-    Returns:
-        A string representing the modified file content with all new blocks inserted.
-    """
-    # Sort the block indices in descending order by end_index.
-    sorted_blocks = sorted(block_indicies, key=lambda x: x[2], reverse=True)
-    
-    for block_info in sorted_blocks:
-        target_key, start_index, end_index = block_info
-        
-        # Retrieve the updated list for the target key.
-        if target_key not in updated_data:
-            raise ValueError(f"Key '{target_key}' not found in updated_data.")
-        input_list = updated_data[target_key]
-        
-        # Convert the input list into a YAML-formatted string.
-        yaml_str = list_item_to_yaml_str(input_list)
-        
-        # Ensure the YAML string ends with a newline.
-        if not yaml_str.endswith("\n"):
-            yaml_str += "\n"
-        
-        # Append an extra line with a single space.
-        yaml_str += " \n"
-        
-        # Optionally remove a blank line at the insertion point.
-        if end_index < len(lines_snapshot) and lines_snapshot[end_index].strip() == "":
-            del lines_snapshot[end_index]
-        
-        # Insert the YAML block at the end_index.
-        lines_snapshot = lines_snapshot[:end_index-1] + [yaml_str] + lines_snapshot[end_index:]
-    
-    return "".join(lines_snapshot)
-
-
-
+from filereadwrite.file_indicies import find_yaml_block_indices_for_all
+from filereadwrite.string_write import insert_updated_blocks
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="YAML update tool")
@@ -249,8 +50,23 @@ if __name__ == '__main__':
     updated_dict_dates = update_dates_in_data(dict_item_key_values)
     print(f"updated_dict_dates: {updated_dict_dates}")
 
-    lines_snapshot, block_indicies = find_yaml_block_indices_for_all(args.manifest_file, updated_list_dates)
-    print(f"block_indicies: {block_indicies}")
+    list_lines_snapshot, list_block_indicies = find_yaml_block_indices_for_all(args.manifest_file, updated_list_dates)
+    print(f"list_block_indicies: {list_block_indicies}")
+
+    # testing to see if we can use updated_dict_dates to get the block indicies
+    dict_lines_snapshot, dict_block_indicies = find_yaml_block_indices_for_all(args.manifest_file, updated_dict_dates)
+    print(f"dict_block_indicies: {dict_block_indicies}")
+
 
     # print(insert_input_str_lines(lines_snapshot, updated_data['whateverThing'], end_index))
-    print(insert_updated_blocks(lines_snapshot, block_indicies, updated_list_dates))
+    print(insert_updated_blocks(list_lines_snapshot, list_block_indicies, updated_list_dates))
+
+
+
+
+
+    # At the end, when we do insert_updated_blocks we are going to have to input both list types and dict types
+    # updated_list_dates
+    # updated_dict_dates
+    # and then, probably based upon the function signature, we are going to have to update them appropriately.
+    # this means find_yaml_block_indicies_for_all is probably different for both dict and list inputs...?

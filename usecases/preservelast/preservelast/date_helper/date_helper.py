@@ -38,3 +38,19 @@ def update_if_valid_date_or_suffix(date_str: str) -> str:
             return f"{today_str}-{counter + 1}"
     else:
         return today_str
+    
+def update_dates_in_data(data: dict[str, list[dict[str, str]]]) -> dict[str, list[dict[str, str]]]:
+    """
+    Iterates over each key and nested dictionary in 'data' and updates any valid date or date-with-suffix
+    field using update_if_valid_date_or_suffix. Returns the updated data structure.
+    """
+    updated_data = {}
+    for outer_key, list_of_dicts in data.items():
+        updated_list = []
+        for inner_dict in list_of_dicts:
+            updated_inner = {}
+            for sub_key, value in inner_dict.items():
+                updated_inner[sub_key] = update_if_valid_date_or_suffix(value)
+            updated_list.append(updated_inner)
+        updated_data[outer_key] = updated_list
+    return updated_data
