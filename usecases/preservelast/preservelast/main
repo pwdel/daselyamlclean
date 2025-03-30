@@ -1,54 +1,12 @@
 #!/usr/bin/env python3
 
 import argparse
-import re
 from typing import Dict, List
 from backup.create_backup import create_backup
-from dasel.dasel_helpers import dasel_read, dasel_last_index_for_key
+from dasel.dasel_helpers import dasel_read
 from datestring.datestring import update_if_valid_date_or_suffix
-
-
-
-
-
-def get_last_list_index_for_key(manifest_file, keys):
-    """
-    For each key in the provided list, provide a dict showing the last index
-    in the list under a given key.
-    """
-    counts = {}
-    for key in keys:
-        try:
-            count_output = dasel_last_index_for_key(manifest_file, key)
-            counts[key] = int(count_output) - 1
-        except Exception as e:
-            print(f"Error retrieving count for key '{key}': {e}")
-            counts[key] = None
-    return counts
-
-def get_last_item_elements(manifest_file, key, last_index):
-    """
-    For a given key in the manifest file, constructs a selector for the last element in the list,
-    reads its YAML with dasel_read, and returns the keys (if the element is a dictionary).
-    
-    For example, if key is "whateverThing" and last_index is 1,
-    it runs:
-      dasel --file <manifest_file> --read yaml --selector 'whateverThing.[1]' --type yaml
-    and returns the list of keys in that mapping.
-    """
-    selector = f"{key}.[{last_index}]"
-    output = dasel_read(manifest_file, selector)
-    try:
-        data = yaml.safe_load(output)
-    except Exception as e:
-        print(f"Error loading YAML for selector '{selector}': {e}")
-        return []
-    
-    if isinstance(data, dict):
-        return list(data.keys())
-    else:
-        print(f"Data for selector '{selector}' is not a mapping. Found type: {type(data)}")
-        return []
+from yaml_toplevel.yaml_toplevel import get_toplevel_keys, determine_key_contents
+from yaml_list_helpers.yaml_list_helpers import get_last_list_index_for_key
 
 def get_list_item_key_values(manifest_file: str, counts_dict: Dict[str, int]) -> Dict[str, List[Dict[str, str]]]:
     """

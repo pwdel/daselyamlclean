@@ -1,4 +1,5 @@
 from dasel.dasel_helpers import dasel_read
+import re
 
 def get_toplevel_keys(file_path):
     """
