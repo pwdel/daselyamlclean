@@ -2,25 +2,11 @@
 
 import subprocess
 import argparse
-import shutil
-import os
 import re
 from typing import Dict, List
 from datetime import datetime
+from backup.create_backup import create_backup
 
-def create_backup(manifest_file):
-    """
-    Creates a backup of the manifest file by appending '.backup' to its name.
-    If a backup already exists, it is removed first.
-    Returns the backup file path.
-    """
-    backup_file = manifest_file + ".backup"
-    if os.path.exists(backup_file):
-        os.remove(backup_file)
-        print(f"Deleted existing backup file: {backup_file}")
-    shutil.copy2(manifest_file, backup_file)
-    print(f"Created backup file: {backup_file}")
-    return backup_file
 
 def dasel_read(manifest_file, selector=""):
     """
@@ -208,7 +194,7 @@ def update_if_valid_date_or_suffix(date_str: str) -> str:
         return today_str
 
 ## OUTPUTS UPDATED DICTS
-def update_dict_key_values(manifest_file: str, keys: list[str]) -> dict[str, str]:
+def update_dict_key_dates(manifest_file: str, keys: list[str]) -> dict[str, str]:
     """
     For each top-level key in 'keys' (which are expected to contain dictionary values),
     this function retrieves its YAML content using dasel_read(), parses the key–value pairs,
@@ -437,9 +423,9 @@ if __name__ == '__main__':
     keys_with_list_as_values, keys_with_dict_as_values = determine_key_contents(args.manifest_file, keys)
     print(f"keys_with_list_as_values, keys_with_dict_as_values: {keys_with_list_as_values}. {keys_with_dict_as_values}")
 
-    # Updating Dicts
-    updated_dict_values = update_dict_key_values(args.manifest_file, keys_with_dict_as_values)
-    print(f"updated_dict_values {updated_dict_values}")
+    # Updating datestrings within specified Dicts
+    updated_dict_dates = update_dict_key_dates(args.manifest_file, keys_with_dict_as_values)
+    print(f"updated_dict_dates {updated_dict_dates}")
 
     # Updating Lists
     counts = get_last_list_index_for_key(args.manifest_file, keys_with_list_as_values)
