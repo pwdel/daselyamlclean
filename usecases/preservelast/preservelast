@@ -207,6 +207,51 @@ def update_if_valid_date_or_suffix(date_str: str) -> str:
     else:
         return today_str
 
+## OUTPUTS UPDATED DICTS
+def update_dict_key_values(manifest_file: str, keys: list[str]) -> dict[str, str]:
+    """
+    For each top-level key in 'keys' (which are expected to contain dictionary values),
+    this function retrieves its YAML content using dasel_read(), parses the key–value pairs,
+    updates any valid date (or date with suffix) using update_if_valid_date_or_suffix,
+    and returns a dictionary mapping the key to its updated YAML string.
+    
+    Args:
+        manifest_file: Path to the YAML manifest file.
+        keys: A list of top-level keys that are expected to have dictionary values.
+    
+    Returns:
+        A dictionary mapping each key in the input list to a string representing the updated YAML content.
+    """
+    updated_results = {}
+    
+    for key in keys:
+        # Use dasel_read to get the content for the key.
+        content = dasel_read(manifest_file, key)
+        # We'll rebuild the content line-by-line.
+        updated_lines = []
+        
+        for line in content.splitlines():
+            # Only process non-empty lines that contain a colon.
+            if line.strip() and ':' in line:
+                parts = line.split(":", 1)
+                sub_key = parts[0].strip()
+                value = parts[1].strip()
+                # Remove surrounding quotes if present.
+                if (value.startswith('"') and value.endswith('"')) or (value.startswith("'") and value.endswith("'")):
+                    value = value[1:-1]
+                # Update the date value if valid.
+                updated_value = update_if_valid_date_or_suffix(value)
+                # Reconstruct the line with updated value in double quotes.
+                updated_lines.append(f"{sub_key}: \"{updated_value}\"")
+            else:
+                updated_lines.append(line)
+        
+        updated_results[key] = "\n".join(updated_lines)
+    
+    return updated_results
+
+
+## UPDATES LISTS
 def update_dates_in_data(data: dict[str, list[dict[str, str]]]) -> dict[str, list[dict[str, str]]]:
     """
     Iterates over each key and nested dictionary in 'data' and updates any valid date or date-with-suffix
@@ -392,11 +437,14 @@ if __name__ == '__main__':
     keys_with_list_as_values, keys_with_dict_as_values = determine_key_contents(args.manifest_file, keys)
     print(f"keys_with_list_as_values, keys_with_dict_as_values: {keys_with_list_as_values}. {keys_with_dict_as_values}")
 
+    # Updating Dicts
+    updated_dict_values = update_dict_key_values(args.manifest_file, keys_with_dict_as_values)
+    print(f"updated_dict_values {updated_dict_values}")
+
+    # Updating Lists
     counts = get_last_list_index_for_key(args.manifest_file, keys_with_list_as_values)
-    
     print("Last index for list under key:", counts)
     keyvalues = get_list_item_key_values(args.manifest_file, counts)
-
     print(f"keyvalues: {keyvalues}")
 
     updated_data = update_dates_in_data(keyvalues)
