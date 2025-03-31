@@ -29,6 +29,8 @@ if __name__ == '__main__':
 
     backup_file = create_backup(args.manifest_file)
 
+    ### Get Top Level Keys from Updates and Inserts Files
+
     inserts_file = args.replacements_dir + '/inserts.yaml'
     inserts_keys = get_toplevel_inserts_keys(inserts_file)
 
@@ -37,21 +39,29 @@ if __name__ == '__main__':
     updates_keys = get_toplevel_inserts_keys(updates_file)
     print(f"updates_keys: {updates_keys}")
 
-    keys_with_list_as_values, keys_with_dict_as_values = determine_key_contents(args.manifest_file, inserts_keys)
-    print(f"keys_with_list_as_values {keys_with_list_as_values}")
-    print(f"keys_with_dict_as_values {keys_with_dict_as_values}")
+    ### Extract Keys and Contents
+
+    keys_with_list_as_values_inserts, keys_with_dict_as_values_inserts = determine_key_contents(args.manifest_file, inserts_keys)
+    print(f"keys_with_list_as_values_inserts {keys_with_list_as_values_inserts}")
+    print(f"keys_with_dict_as_values_inserts {keys_with_dict_as_values_inserts}")
+
+    keys_with_list_as_values_updates, keys_with_dict_as_values_updates = determine_key_contents(args.manifest_file, inserts_keys)
+    print(f"keys_with_list_as_values_updates {keys_with_list_as_values_updates}")
+    print(f"keys_with_dict_as_values_updates {keys_with_dict_as_values_updates}")
+
+    ### Update Dates
 
     # Updating Lists
-    counts = get_last_list_index_for_key(args.manifest_file, keys_with_list_as_values)
+    counts = get_last_list_index_for_key(args.manifest_file, keys_with_list_as_values_inserts)
     print("Last index for list under key, counts:", counts)
     list_item_key_values = get_list_item_key_values(args.manifest_file, counts)
     print(f"list_item_key_values: {list_item_key_values}")
     updated_list_dates = update_dates_in_data(list_item_key_values)
     print(f"updated_list_dates: {updated_list_dates}")
 
-    print(f"keys_with_dict_as_values: {keys_with_dict_as_values}")
+    print(f"keys_with_dict_as_values: {keys_with_dict_as_values_inserts}")
     # mirroring what we have above, we need a way to put all lines for a given key into lists
-    dict_item_key_values = get_dict_item_key_values(args.manifest_file, keys_with_dict_as_values)
+    dict_item_key_values = get_dict_item_key_values(args.manifest_file, keys_with_dict_as_values_inserts)
     print(f"dict_item_key_values: {dict_item_key_values}")
     # ok now that we have it in the proper format, update dates
     updated_dict_dates = update_dates_in_data(dict_item_key_values)
@@ -85,8 +95,8 @@ if __name__ == '__main__':
         both_lines_snapshot, 
         combined_block_indicies, 
         combined_updated_dates,
-        keys_with_list_as_values,
-        keys_with_dict_as_values
+        keys_with_list_as_values_inserts,
+        keys_with_dict_as_values_inserts
     ))
 
     # At the end, when we do insert_updated_blocks we are going to have to input both list types and dict types
