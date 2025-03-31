@@ -7,7 +7,7 @@ from yaml_toplevel.yaml_toplevel import get_toplevel_inserts_keys, determine_key
 from yaml_list_helpers.yaml_list_helpers import get_last_list_index_for_key, get_list_item_key_values
 from yaml_dict_helpers.yaml_dict_helpers import get_dict_item_key_values
 from filereadwrite.file_indicies import find_yaml_block_indices_for_all, find_yaml_block_indices_for_combined
-from filereadwrite.string_write import insert_combined_updated_blocks
+from filereadwrite.string_write import insert_combined_updated_blocks, replace_combined_updated_blocks
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="YAML update tool")
@@ -96,7 +96,6 @@ if __name__ == '__main__':
     print(f"dict_block_indicies: {dict_block_indicies}")
 
 
-
     ### COMBINING BOTH INSERTS AND UPDATES for both DICTS AND LISTS
     combined_updated_dates = {
         "inserts": {**updated_list_dates_inserts, **updated_dict_dates_inserts},
@@ -104,17 +103,37 @@ if __name__ == '__main__':
     }    
 
     print(f"combined_updated_dates: {combined_updated_dates}")
-    # lines_snapshot, combined_block_indicies = find_yaml_block_indices_for_combined(args.manifest_file, combined_updated_dates)
-
+    combined_lines_snapshot, combined_block_indicies = find_yaml_block_indices_for_combined(args.manifest_file, combined_updated_dates)
+    print(f"combined_lines_snapshot: {combined_lines_snapshot}")
+    print(f"combined_block_indicies {combined_block_indicies}")
 
 
     ### FINALIZE AND INSERT EVERYTHING INTO STRING
 
-    # draft function signature
     print(insert_combined_updated_blocks(
         both_lines_snapshot, 
         combined_block_indicies_inserts, 
         combined_updated_dates_inserts,
         keys_with_list_as_values_inserts,
         keys_with_dict_as_values_inserts
+    ))
+
+
+    # function signature to insert everything
+    print(f"combined_lines_snapshot: {combined_lines_snapshot}")
+    print(f"combined_block_indicies {combined_block_indicies}")
+    print(f"combined_updated_dates: {combined_updated_dates}")
+    print(f"keys_with_list_as_values_inserts {keys_with_list_as_values_inserts}")
+    print(f"keys_with_dict_as_values_inserts {keys_with_dict_as_values_inserts}")
+    print(f"keys_with_dict_as_values_updates {keys_with_dict_as_values_updates}")
+
+
+
+    print(replace_combined_updated_blocks(
+            combined_lines_snapshot, 
+            combined_block_indicies, 
+            combined_updated_dates,
+            keys_with_list_as_values_inserts,
+            keys_with_dict_as_values_inserts,
+            keys_with_dict_as_values_updates
     ))
