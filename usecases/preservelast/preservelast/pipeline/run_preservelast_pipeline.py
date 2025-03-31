@@ -42,11 +42,11 @@ def run_preservelast_pipeline(replacements_dir, manifests_file):
     )
 
     # Produce and print the final updated file content.
-    print(replace_combined_updated_blocks(
+    return replace_combined_updated_blocks(
         combined_lines_snapshot, 
         combined_block_indicies, 
         combined_updated_dates,
         keys_with_list_as_values_inserts,
         keys_with_dict_as_values_inserts,
         keys_with_dict_as_values_updates
-    ))
+    )
