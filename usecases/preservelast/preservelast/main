@@ -6,7 +6,7 @@ from date_helper.date_helper import update_dates_in_data
 from yaml_toplevel.yaml_toplevel import get_toplevel_inserts_keys, determine_key_contents
 from yaml_list_helpers.yaml_list_helpers import get_last_list_index_for_key, get_list_item_key_values
 from yaml_dict_helpers.yaml_dict_helpers import get_dict_item_key_values
-from filereadwrite.file_indicies import find_yaml_block_indices_for_all
+from filereadwrite.file_indicies import find_yaml_block_indices_for_all, find_yaml_block_indices_for_combined
 from filereadwrite.string_write import insert_combined_updated_blocks
 
 if __name__ == '__main__':
@@ -53,45 +53,58 @@ if __name__ == '__main__':
 
     ### Change Dates for Inserts
 
-    # Updating Lists
+    # Changing Dates within Lists for Inserts
     counts = get_last_list_index_for_key(args.manifest_file, keys_with_list_as_values_inserts)
     print("Last index for list under key, counts:", counts)
     list_item_key_values_inserts = get_list_item_key_values(args.manifest_file, counts)
-    print(f"list_item_key_values: {list_item_key_values_inserts}")
+    print(f"list_item_key_values_inserts: {list_item_key_values_inserts}")
     updated_list_dates_inserts = update_dates_in_data(list_item_key_values_inserts)
-    print(f"updated_list_dates: {updated_list_dates_inserts}")
+    print(f"updated_list_dates_inserts: {updated_list_dates_inserts}")
 
-    # Updating Dicts
-    print(f"keys_with_dict_as_values: {keys_with_dict_as_values_inserts}")
+    # Changing Dates within Dicts for Inserts
+    print(f"keys_with_dict_as_values_inserts: {keys_with_dict_as_values_inserts}")
     # mirroring what we have above, we need a way to put all lines for a given key into lists
-    dict_item_key_values = get_dict_item_key_values(args.manifest_file, keys_with_dict_as_values_inserts)
-    print(f"dict_item_key_values: {dict_item_key_values}")
+    dict_item_key_values_inserts = get_dict_item_key_values(args.manifest_file, keys_with_dict_as_values_inserts)
+    print(f"dict_item_key_values_inserts: {dict_item_key_values_inserts}")
     # ok now that we have it in the proper format, update dates
-    updated_dict_dates = update_dates_in_data(dict_item_key_values)
-    print(f"updated_dict_dates: {updated_dict_dates}")
+    updated_dict_dates_inserts = update_dates_in_data(dict_item_key_values_inserts)
+    print(f"updated_dict_dates_inserts: {updated_dict_dates_inserts}")
 
-
+    ### Change Dates for Updates
+    print(f"keys_with_dict_as_values_updates: {keys_with_dict_as_values_updates}")
+    dict_item_key_values_updates = get_dict_item_key_values(args.manifest_file, keys_with_dict_as_values_updates)
+    print(f"dict_item_key_values_updates: {dict_item_key_values_updates}")
+    updated_dict_dates_updates = update_dates_in_data(dict_item_key_values_updates)
+    print(f"updated_dict_dates_updates: {updated_dict_dates_updates}")
 
 
     ### COMBING FOR ONE STEP INSERT
 
     ### Combining Updated Dates for Inserts, Find Block Indicies
-    combined_updated_dates_inserts = {**updated_list_dates_inserts, **updated_dict_dates}
+    combined_updated_dates_inserts = {**updated_list_dates_inserts, **updated_dict_dates_inserts}
     print(f"combined_updated_dates_inserts: {combined_updated_dates_inserts}")
 
-    both_lines_snapshot, combined_block_indicies = find_yaml_block_indices_for_all(args.manifest_file, combined_updated_dates_inserts)
+    both_lines_snapshot, combined_block_indicies_inserts = find_yaml_block_indices_for_all(args.manifest_file, combined_updated_dates_inserts)
     print(f"both_lines_snapshot: {both_lines_snapshot}")
-    print(f"combined_block_indicies: {combined_block_indicies}")
+    print(f"combined_block_indicies: {combined_block_indicies_inserts}")
 
     list_lines_snapshot, list_block_indicies = find_yaml_block_indices_for_all(args.manifest_file, updated_list_dates_inserts)
     print(f"list_block_indicies: {list_block_indicies}")
 
     # testing to see if we can use updated_dict_dates to get the block indicies
-    dict_lines_snapshot, dict_block_indicies = find_yaml_block_indices_for_all(args.manifest_file, updated_dict_dates)
+    dict_lines_snapshot, dict_block_indicies = find_yaml_block_indices_for_all(args.manifest_file, updated_dict_dates_inserts)
     print(f"dict_block_indicies: {dict_block_indicies}")
 
 
 
+    ### COMBINING BOTH INSERTS AND UPDATES for both DICTS AND LISTS
+    combined_updated_dates = {
+        "inserts": {**updated_list_dates_inserts, **updated_dict_dates_inserts},
+        "updates": {**updated_dict_dates_updates}  ## List updates not supported yet.
+    }    
+
+    print(f"combined_updated_dates: {combined_updated_dates}")
+    # lines_snapshot, combined_block_indicies = find_yaml_block_indices_for_combined(args.manifest_file, combined_updated_dates)
 
 
 
@@ -100,7 +113,7 @@ if __name__ == '__main__':
     # draft function signature
     print(insert_combined_updated_blocks(
         both_lines_snapshot, 
-        combined_block_indicies, 
+        combined_block_indicies_inserts, 
         combined_updated_dates_inserts,
         keys_with_list_as_values_inserts,
         keys_with_dict_as_values_inserts
