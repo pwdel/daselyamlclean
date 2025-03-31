@@ -108,27 +108,6 @@ if __name__ == '__main__':
     print(f"combined_block_indicies {combined_block_indicies}")
 
 
-    ### FINALIZE AND INSERT EVERYTHING INTO STRING
-
-    print(insert_combined_updated_blocks(
-        both_lines_snapshot, 
-        combined_block_indicies_inserts, 
-        combined_updated_dates_inserts,
-        keys_with_list_as_values_inserts,
-        keys_with_dict_as_values_inserts
-    ))
-
-
-    # function signature to insert everything
-    print(f"combined_lines_snapshot: {combined_lines_snapshot}")
-    print(f"combined_block_indicies {combined_block_indicies}")
-    print(f"combined_updated_dates: {combined_updated_dates}")
-    print(f"keys_with_list_as_values_inserts {keys_with_list_as_values_inserts}")
-    print(f"keys_with_dict_as_values_inserts {keys_with_dict_as_values_inserts}")
-    print(f"keys_with_dict_as_values_updates {keys_with_dict_as_values_updates}")
-
-
-
     print(replace_combined_updated_blocks(
             combined_lines_snapshot, 
             combined_block_indicies, 
