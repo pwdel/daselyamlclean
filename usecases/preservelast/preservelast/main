@@ -3,11 +3,11 @@
 import argparse
 from filereadwrite.create_backup import create_backup
 from date_helper.date_helper import update_dates_in_data
-from yaml_toplevel.yaml_toplevel import get_toplevel_keys, determine_key_contents
+from yaml_toplevel.yaml_toplevel import get_toplevel_inserts_keys, determine_key_contents
 from yaml_list_helpers.yaml_list_helpers import get_last_list_index_for_key, get_list_item_key_values
 from yaml_dict_helpers.yaml_dict_helpers import get_dict_item_key_values
 from filereadwrite.file_indicies import find_yaml_block_indices_for_all
-from filereadwrite.string_write import insert_updated_blocks
+from filereadwrite.string_write import insert_combined_updated_blocks
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="YAML update tool")
@@ -29,11 +29,18 @@ if __name__ == '__main__':
 
     backup_file = create_backup(args.manifest_file)
 
-    replacements_file = args.replacements_dir + '/replacements.yaml'
-    keys = get_toplevel_keys(replacements_file)
+    inserts_file = args.replacements_dir + '/inserts.yaml'
+    inserts_keys = get_toplevel_inserts_keys(inserts_file)
 
-    keys_with_list_as_values, keys_with_dict_as_values = determine_key_contents(args.manifest_file, keys)
-  
+    updates_file = args.replacements_dir + '/updates.yaml'
+    print(f"updates_file: {updates_file}")
+    updates_keys = get_toplevel_inserts_keys(updates_file)
+    print(f"updates_keys: {updates_keys}")
+
+    keys_with_list_as_values, keys_with_dict_as_values = determine_key_contents(args.manifest_file, inserts_keys)
+    print(f"keys_with_list_as_values {keys_with_list_as_values}")
+    print(f"keys_with_dict_as_values {keys_with_dict_as_values}")
+
     # Updating Lists
     counts = get_last_list_index_for_key(args.manifest_file, keys_with_list_as_values)
     print("Last index for list under key, counts:", counts)
@@ -66,12 +73,21 @@ if __name__ == '__main__':
     print(f"dict_block_indicies: {dict_block_indicies}")
 
 
+    # the below works and can be used in insert_updated blocks
+    # yaml_str = dict_item_to_yaml_str(updated_dict_dates)
+    # print(yaml_str)
+
     # print(insert_input_str_lines(lines_snapshot, updated_data['whateverThing'], end_index))
-    print(insert_updated_blocks(list_lines_snapshot, list_block_indicies, updated_list_dates))
+    # print(insert_updated_blocks(both_lines_snapshot, list_block_indicies, updated_list_dates))
 
-
-
-
+    # draft function signature
+    print(insert_combined_updated_blocks(
+        both_lines_snapshot, 
+        combined_block_indicies, 
+        combined_updated_dates,
+        keys_with_list_as_values,
+        keys_with_dict_as_values
+    ))
 
     # At the end, when we do insert_updated_blocks we are going to have to input both list types and dict types
     # updated_list_dates

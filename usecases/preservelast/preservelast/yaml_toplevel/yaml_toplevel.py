@@ -1,7 +1,7 @@
 from dasel.dasel_helpers import dasel_read
 import re
 
-def get_toplevel_keys(file_path):
+def get_toplevel_inserts_keys(file_path):
     """
     Uses dasel_read on the provided file (with an empty selector)
     to extract the top-level keys from the YAML.
