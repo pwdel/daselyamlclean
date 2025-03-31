@@ -3,12 +3,6 @@
 import argparse
 from pipeline.run_preservelast_pipeline import run_preservelast_pipeline
 from filereadwrite.create_backup import create_backup
-from date_helper.date_helper import update_dates_in_data
-from yaml_toplevel.yaml_toplevel import get_toplevel_inserts_keys, determine_key_contents
-from yaml_list_helpers.yaml_list_helpers import get_last_list_index_for_key, get_list_item_key_values
-from yaml_dict_helpers.yaml_dict_helpers import get_dict_item_key_values
-from filereadwrite.file_indicies import find_yaml_block_indices_for_all, find_yaml_block_indices_for_combined
-from filereadwrite.string_write import replace_combined_updated_blocks
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="YAML update tool")
