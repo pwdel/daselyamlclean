@@ -1,0 +1,118 @@
+#!/usr/bin/env python3
+
+import argparse
+from filereadwrite.create_backup import create_backup
+from date_helper.date_helper import update_dates_in_data
+from yaml_toplevel.yaml_toplevel import get_toplevel_inserts_keys, determine_key_contents
+from yaml_list_helpers.yaml_list_helpers import get_last_list_index_for_key, get_list_item_key_values
+from yaml_dict_helpers.yaml_dict_helpers import get_dict_item_key_values
+from filereadwrite.file_indicies import find_yaml_block_indices_for_all, find_yaml_block_indices_for_combined
+from filereadwrite.string_write import insert_combined_updated_blocks, replace_combined_updated_blocks
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description="YAML update tool")
+    parser.add_argument('subcommand', choices=['put'],
+                        help="Subcommand: 'put' (currently the only supported action)")
+    parser.add_argument('manifest_file',
+                        help="Path to the target manifest YAML file (e.g. repo/manifest-01/manifest.yaml)")
+    parser.add_argument('--replacements_dir',
+                        help="Directory containing updates (not used in this minimal example)")
+    args = parser.parse_args()
+
+    if not args.manifest_file:
+        print("Error: manifest_file must be provided")
+        exit(1)
+
+    if not args.replacements_dir:
+        print("Error: --replacements_dir must be provided")
+        exit(1)
+
+    backup_file = create_backup(args.manifest_file)
+
+    ### Get Top Level Keys from Updates and Inserts Files
+
+    inserts_file = args.replacements_dir + '/inserts.yaml'
+    inserts_keys = get_toplevel_inserts_keys(inserts_file)
+
+    updates_file = args.replacements_dir + '/updates.yaml'
+    print(f"updates_file: {updates_file}")
+    updates_keys = get_toplevel_inserts_keys(updates_file)
+    print(f"updates_keys: {updates_keys}")
+
+    ### Extract Keys and Contents for both Inserts and Updates
+
+    keys_with_list_as_values_inserts, keys_with_dict_as_values_inserts = determine_key_contents(args.manifest_file, inserts_keys)
+    print(f"keys_with_list_as_values_inserts {keys_with_list_as_values_inserts}")
+    print(f"keys_with_dict_as_values_inserts {keys_with_dict_as_values_inserts}")
+
+    keys_with_list_as_values_updates, keys_with_dict_as_values_updates = determine_key_contents(args.manifest_file, updates_keys)
+    print(f"keys_with_list_as_values_updates {keys_with_list_as_values_updates}")
+    print(f"keys_with_dict_as_values_updates {keys_with_dict_as_values_updates}")
+
+    ## DATES CHANGES ----
+
+    ### Change Dates for Inserts
+
+    # Changing Dates within Lists for Inserts
+    counts = get_last_list_index_for_key(args.manifest_file, keys_with_list_as_values_inserts)
+    print("Last index for list under key, counts:", counts)
+    list_item_key_values_inserts = get_list_item_key_values(args.manifest_file, counts)
+    print(f"list_item_key_values_inserts: {list_item_key_values_inserts}")
+    updated_list_dates_inserts = update_dates_in_data(list_item_key_values_inserts)
+    print(f"updated_list_dates_inserts: {updated_list_dates_inserts}")
+
+    # Changing Dates within Dicts for Inserts
+    print(f"keys_with_dict_as_values_inserts: {keys_with_dict_as_values_inserts}")
+    # mirroring what we have above, we need a way to put all lines for a given key into lists
+    dict_item_key_values_inserts = get_dict_item_key_values(args.manifest_file, keys_with_dict_as_values_inserts)
+    print(f"dict_item_key_values_inserts: {dict_item_key_values_inserts}")
+    # ok now that we have it in the proper format, update dates
+    updated_dict_dates_inserts = update_dates_in_data(dict_item_key_values_inserts)
+    print(f"updated_dict_dates_inserts: {updated_dict_dates_inserts}")
+
+    ### Change Dates for Updates
+    print(f"keys_with_dict_as_values_updates: {keys_with_dict_as_values_updates}")
+    dict_item_key_values_updates = get_dict_item_key_values(args.manifest_file, keys_with_dict_as_values_updates)
+    print(f"dict_item_key_values_updates: {dict_item_key_values_updates}")
+    updated_dict_dates_updates = update_dates_in_data(dict_item_key_values_updates)
+    print(f"updated_dict_dates_updates: {updated_dict_dates_updates}")
+
+
+    ### COMBING FOR ONE STEP INSERT
+
+    ### Combining Updated Dates for Inserts, Find Block Indicies
+    combined_updated_dates_inserts = {**updated_list_dates_inserts, **updated_dict_dates_inserts}
+    print(f"combined_updated_dates_inserts: {combined_updated_dates_inserts}")
+
+    both_lines_snapshot, combined_block_indicies_inserts = find_yaml_block_indices_for_all(args.manifest_file, combined_updated_dates_inserts)
+    print(f"both_lines_snapshot: {both_lines_snapshot}")
+    print(f"combined_block_indicies: {combined_block_indicies_inserts}")
+
+    list_lines_snapshot, list_block_indicies = find_yaml_block_indices_for_all(args.manifest_file, updated_list_dates_inserts)
+    print(f"list_block_indicies: {list_block_indicies}")
+
+    # testing to see if we can use updated_dict_dates to get the block indicies
+    dict_lines_snapshot, dict_block_indicies = find_yaml_block_indices_for_all(args.manifest_file, updated_dict_dates_inserts)
+    print(f"dict_block_indicies: {dict_block_indicies}")
+
+
+    ### COMBINING BOTH INSERTS AND UPDATES for both DICTS AND LISTS
+    combined_updated_dates = {
+        "inserts": {**updated_list_dates_inserts, **updated_dict_dates_inserts},
+        "updates": {**updated_dict_dates_updates}  ## List updates not supported yet.
+    }    
+
+    print(f"combined_updated_dates: {combined_updated_dates}")
+    combined_lines_snapshot, combined_block_indicies = find_yaml_block_indices_for_combined(args.manifest_file, combined_updated_dates)
+    print(f"combined_lines_snapshot: {combined_lines_snapshot}")
+    print(f"combined_block_indicies {combined_block_indicies}")
+
+
+    print(replace_combined_updated_blocks(
+            combined_lines_snapshot, 
+            combined_block_indicies, 
+            combined_updated_dates,
+            keys_with_list_as_values_inserts,
+            keys_with_dict_as_values_inserts,
+            keys_with_dict_as_values_updates
+    ))
