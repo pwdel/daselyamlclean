@@ -39,26 +39,29 @@ if __name__ == '__main__':
     updates_keys = get_toplevel_inserts_keys(updates_file)
     print(f"updates_keys: {updates_keys}")
 
-    ### Extract Keys and Contents
+    ### Extract Keys and Contents for both Inserts and Updates
 
     keys_with_list_as_values_inserts, keys_with_dict_as_values_inserts = determine_key_contents(args.manifest_file, inserts_keys)
     print(f"keys_with_list_as_values_inserts {keys_with_list_as_values_inserts}")
     print(f"keys_with_dict_as_values_inserts {keys_with_dict_as_values_inserts}")
 
-    keys_with_list_as_values_updates, keys_with_dict_as_values_updates = determine_key_contents(args.manifest_file, inserts_keys)
+    keys_with_list_as_values_updates, keys_with_dict_as_values_updates = determine_key_contents(args.manifest_file, updates_keys)
     print(f"keys_with_list_as_values_updates {keys_with_list_as_values_updates}")
     print(f"keys_with_dict_as_values_updates {keys_with_dict_as_values_updates}")
 
-    ### Update Dates
+    ## DATES CHANGES ----
+
+    ### Change Dates for Inserts
 
     # Updating Lists
     counts = get_last_list_index_for_key(args.manifest_file, keys_with_list_as_values_inserts)
     print("Last index for list under key, counts:", counts)
-    list_item_key_values = get_list_item_key_values(args.manifest_file, counts)
-    print(f"list_item_key_values: {list_item_key_values}")
-    updated_list_dates = update_dates_in_data(list_item_key_values)
-    print(f"updated_list_dates: {updated_list_dates}")
+    list_item_key_values_inserts = get_list_item_key_values(args.manifest_file, counts)
+    print(f"list_item_key_values: {list_item_key_values_inserts}")
+    updated_list_dates_inserts = update_dates_in_data(list_item_key_values_inserts)
+    print(f"updated_list_dates: {updated_list_dates_inserts}")
 
+    # Updating Dicts
     print(f"keys_with_dict_as_values: {keys_with_dict_as_values_inserts}")
     # mirroring what we have above, we need a way to put all lines for a given key into lists
     dict_item_key_values = get_dict_item_key_values(args.manifest_file, keys_with_dict_as_values_inserts)
@@ -68,14 +71,19 @@ if __name__ == '__main__':
     print(f"updated_dict_dates: {updated_dict_dates}")
 
 
-    combined_updated_dates = {**updated_list_dates, **updated_dict_dates}
-    print(f"combined_updated_dates: {combined_updated_dates}")
 
-    both_lines_snapshot, combined_block_indicies = find_yaml_block_indices_for_all(args.manifest_file, combined_updated_dates)
+
+    ### COMBING FOR ONE STEP INSERT
+
+    ### Combining Updated Dates for Inserts, Find Block Indicies
+    combined_updated_dates_inserts = {**updated_list_dates_inserts, **updated_dict_dates}
+    print(f"combined_updated_dates_inserts: {combined_updated_dates_inserts}")
+
+    both_lines_snapshot, combined_block_indicies = find_yaml_block_indices_for_all(args.manifest_file, combined_updated_dates_inserts)
     print(f"both_lines_snapshot: {both_lines_snapshot}")
     print(f"combined_block_indicies: {combined_block_indicies}")
 
-    list_lines_snapshot, list_block_indicies = find_yaml_block_indices_for_all(args.manifest_file, updated_list_dates)
+    list_lines_snapshot, list_block_indicies = find_yaml_block_indices_for_all(args.manifest_file, updated_list_dates_inserts)
     print(f"list_block_indicies: {list_block_indicies}")
 
     # testing to see if we can use updated_dict_dates to get the block indicies
@@ -83,24 +91,17 @@ if __name__ == '__main__':
     print(f"dict_block_indicies: {dict_block_indicies}")
 
 
-    # the below works and can be used in insert_updated blocks
-    # yaml_str = dict_item_to_yaml_str(updated_dict_dates)
-    # print(yaml_str)
 
-    # print(insert_input_str_lines(lines_snapshot, updated_data['whateverThing'], end_index))
-    # print(insert_updated_blocks(both_lines_snapshot, list_block_indicies, updated_list_dates))
+
+
+
+    ### FINALIZE AND INSERT EVERYTHING INTO STRING
 
     # draft function signature
     print(insert_combined_updated_blocks(
         both_lines_snapshot, 
         combined_block_indicies, 
-        combined_updated_dates,
+        combined_updated_dates_inserts,
         keys_with_list_as_values_inserts,
         keys_with_dict_as_values_inserts
     ))
-
-    # At the end, when we do insert_updated_blocks we are going to have to input both list types and dict types
-    # updated_list_dates
-    # updated_dict_dates
-    # and then, probably based upon the function signature, we are going to have to update them appropriately.
-    # this means find_yaml_block_indicies_for_all is probably different for both dict and list inputs...?
