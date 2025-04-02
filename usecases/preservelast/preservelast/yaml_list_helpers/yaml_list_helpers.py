@@ -43,28 +43,57 @@ def get_list_item_key_values(manifest_file: str, counts_dict: Dict[str, int]) ->
         result[key] = line_dicts
     return result
 
-def list_item_to_yaml_str(list_item: list[dict[str, str]]) -> str:
+def list_item_to_yaml_str(list_item: list[dict[str, any]]) -> str:
     """
-    Merges a list of one-key dictionaries into one mapping and returns a YAML-formatted string.
-    For example, given:
-      [{'timestampX': '20250329'}, {'timestampY': '20250329'}, {'anotherBlah': 'heyNowString'}, {'countyThing': '1'}, {'numberThing': '1000'}]
-    this returns:
-      - timestampX: "20250329"
-        timestampY: "20250329"
-        anotherBlah: "heyNowString"
-        countyThing: "1"
-        numberThing: "1000"
-    """
-    merged = {}
-    for d in list_item:
-        merged.update(d)
+    Converts a list of one-key dictionaries into a YAML formatted string while preserving order.
+    If an entry’s value is an empty string, it is interpreted as a signal that this key is a container
+    for subsequent key/value pairs. These following entries are then output as nested under that key.
     
+    For example, given input:
+      [
+        {'timestampA': '20250402'},
+        {'fizz': 'buzz'},
+        {'another': ''},
+        {'SET_VARIABLE': '100'},
+        {'ANOTHER_VARIABLE': '2000'}
+      ]
+    
+    This returns:
+      - timestampA: "20250402"
+        fizz: "buzz"
+        another:
+          SET_VARIABLE: "100"
+          ANOTHER_VARIABLE: "2000"
+    
+    In contrast, a flat list (without an empty value marker) is output as individual key/value pairs.
+    """
     lines = []
-    first = True
-    for key, value in merged.items():
-        if first:
-            lines.append(f"- {key}: \"{value}\"")
-            first = False
+    i = 0
+    first_line = True
+    while i < len(list_item):
+        # Each dictionary is assumed to have a single key-value pair.
+        key, value = next(iter(list_item[i].items()))
+        prefix = "- " if first_line else "  "
+        first_line = False
+
+        if value == "":
+            # The empty string signals that this key is meant to be a container.
+            lines.append(f"{prefix}{key}:")
+            i += 1
+            # Process subsequent items as nested entries until we hit another group marker (empty value)
+            # or run out of items.
+            while i < len(list_item):
+                next_key, next_value = next(iter(list_item[i].items()))
+                # If the next item also has an empty value, assume it's a new top-level group.
+                if next_value == "":
+                    break
+                # Otherwise, output as nested (4-space indent)
+                lines.append(f"    {next_key}: \"{next_value}\"")
+                i += 1
+            continue  # Continue outer loop without extra i increment.
         else:
-            lines.append(f"  {key}: \"{value}\"")
+            # Simple flat key/value pair.
+            lines.append(f"{prefix}{key}: \"{value}\"")
+        i += 1
+
     return "\n".join(lines)

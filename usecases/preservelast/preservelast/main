@@ -5,6 +5,7 @@ from pipeline.run_preservelast_pipeline import run_preservelast_pipeline
 from filereadwrite.create_backup import create_backup
 from filereadwrite.show_diff import show_diff
 from dasel.dasel_helpers import dasel_validate
+from filereadwrite.file_write import apply_pipeline_result
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="YAML update tool")
@@ -28,8 +29,10 @@ if __name__ == '__main__':
 
     pipeline_result = run_preservelast_pipeline(args.replacements_dir, args.manifest_file)
 
-    print(type(pipeline_result))
-
     dasel_validate(pipeline_result)
 
     show_diff(backup_file, pipeline_result)
+
+    apply_pipeline_result(args.manifest_file, pipeline_result, backup_file)
+
+    dasel_validate(args.manifest_file)
