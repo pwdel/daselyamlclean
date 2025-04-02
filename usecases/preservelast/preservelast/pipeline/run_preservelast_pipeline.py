@@ -41,6 +41,8 @@ def run_preservelast_pipeline(replacements_dir, manifests_file):
         manifests_file, combined_updated_dates
     )
 
+    print(f"combined_updated_dates: {combined_updated_dates}")
+
     # Produce and print the final updated file content.
     return replace_combined_updated_blocks(
         combined_lines_snapshot, 
