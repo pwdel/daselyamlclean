@@ -33,6 +33,3 @@ if __name__ == '__main__':
     dasel_validate(pipeline_result)
 
     show_diff(backup_file, pipeline_result)
-
-    # print(f"backup_file: {backup_file}")
-    # print(f"pipeline_result: {pipeline_result}")
