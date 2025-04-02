@@ -1,3 +1,5 @@
+### From within `preservelast/` directory
+
 ```
-./preservelast put repo/manifest-01/manifest.yaml --updates_dir replacements/manifest-01
+./main put ../repo/manifest-01/manifest.yaml --replacements_dir ../replacements/manifest-01
 ```

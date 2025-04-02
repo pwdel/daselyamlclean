@@ -1,0 +1,35 @@
+#!/usr/bin/env python3
+
+import argparse
+from pipeline.run_preservelast_pipeline import run_preservelast_pipeline
+from filereadwrite.create_backup import create_backup
+from filereadwrite.show_diff import show_diff
+from dasel.dasel_helpers import dasel_validate
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description="YAML update tool")
+    parser.add_argument('subcommand', choices=['put'],
+                        help="Subcommand: 'put' (currently the only supported action)")
+    parser.add_argument('manifest_file',
+                        help="Path to the target manifest YAML file (e.g. repo/manifest-01/manifest.yaml)")
+    parser.add_argument('--replacements_dir',
+                        help="Directory containing updates (not used in this minimal example)")
+    args = parser.parse_args()
+
+    if not args.manifest_file:
+        print("Error: manifest_file must be provided")
+        exit(1)
+
+    if not args.replacements_dir:
+        print("Error: --replacements_dir must be provided")
+        exit(1)
+
+    backup_file = create_backup(args.manifest_file)
+
+    pipeline_result = run_preservelast_pipeline(args.replacements_dir, args.manifest_file)
+
+    print(type(pipeline_result))
+
+    dasel_validate(pipeline_result)
+
+    show_diff(backup_file, pipeline_result)
