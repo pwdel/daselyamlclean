@@ -3,6 +3,7 @@
 import argparse
 from pipeline.run_preservelast_pipeline import run_preservelast_pipeline
 from filereadwrite.create_backup import create_backup
+from filereadwrite.show_diff import show_diff
 from dasel.dasel_helpers import dasel_validate
 
 if __name__ == '__main__':
@@ -30,3 +31,8 @@ if __name__ == '__main__':
     print(type(pipeline_result))
 
     dasel_validate(pipeline_result)
+
+    show_diff(backup_file, pipeline_result)
+
+    # print(f"backup_file: {backup_file}")
+    # print(f"pipeline_result: {pipeline_result}")
