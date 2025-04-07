@@ -12,11 +12,13 @@ alsoDoNotTouch:
 firstThing:
 - timestampA: "19691231"
   fizz: buzz
+  empty: ~
   another: &pointerText
     SET_VARIABLE: '100'
     ANOTHER_VARIABLE: '2000'
 - timestampA: "19700101"
   fizz: buzz
+  empty: ~
   another: 
     <<: *pointerText
 
