@@ -1,3 +1,4 @@
+import re
 from yaml_list_helpers.yaml_list_helpers import list_item_to_yaml_str
 from yaml_dict_helpers.yaml_dict_helpers import dict_item_to_yaml_str
 
@@ -82,3 +83,21 @@ def replace_combined_updated_blocks(
             raise ValueError(f"Key '{target_key}' not found in either inserts or updates data.")
     
     return "".join(lines_snapshot)
+
+def replace_nulls_with_tilde_in_string(yaml_str: str) -> str:
+    """
+    Replaces YAML null values (i.e. "null", "Null", or "NULL") with the YAML null literal ~.
+    This function removes any surrounding quotes so that the result is an unquoted tilde,
+    per the YAML specification.
+    
+    Args:
+        yaml_str: The YAML content as a string.
+    
+    Returns:
+        The YAML string with all null-like values replaced with an unquoted ~.
+    """
+    # Replace quoted null values (handles both single and double quotes)
+    yaml_str = re.sub(r'(:\s*)["\'](null|Null|NULL)["\']', r'\1~', yaml_str)
+    # Replace unquoted null values (if they occur as standalone values)
+    yaml_str = re.sub(r'(:\s*)(null|Null|NULL)\b', r'\1~', yaml_str)
+    return yaml_str
