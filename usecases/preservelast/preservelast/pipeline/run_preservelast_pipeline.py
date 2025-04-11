@@ -30,6 +30,8 @@ def run_preservelast_pipeline(replacements_dir, manifests_file):
     dict_item_key_values_updates = get_dict_item_key_values(manifests_file, keys_with_dict_as_values_updates)
     updated_dict_dates_updates = update_dates_in_data(dict_item_key_values_updates)
 
+    print(dict_item_key_values_updates)
+
     # Combine updated data for both inserts and updates.
     combined_updated_dates = {
         "inserts": {**updated_list_dates_inserts, **updated_dict_dates_inserts},
