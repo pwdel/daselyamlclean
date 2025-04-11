@@ -5,7 +5,7 @@ from yaml_toplevel.yaml_toplevel import get_toplevel_inserts_keys, determine_key
 from yaml_list_helpers.yaml_list_helpers import get_last_list_index_for_key, get_list_item_key_values
 from yaml_dict_helpers.yaml_dict_helpers import get_dict_item_key_values
 from filereadwrite.file_indicies import find_yaml_block_indices_for_combined
-from filereadwrite.string_write import replace_combined_updated_blocks
+from filereadwrite.string_write import replace_combined_updated_blocks, replace_nulls_with_tilde_in_string
 
 def run_preservelast_pipeline(replacements_dir, manifests_file):
 
@@ -44,7 +44,7 @@ def run_preservelast_pipeline(replacements_dir, manifests_file):
     print(f"combined_updated_dates: {combined_updated_dates}")
 
     # Produce and print the final updated file content.
-    return replace_combined_updated_blocks(
+    combined_updated_blocks_replaced = replace_combined_updated_blocks(
         combined_lines_snapshot, 
         combined_block_indicies, 
         combined_updated_dates,
@@ -52,3 +52,5 @@ def run_preservelast_pipeline(replacements_dir, manifests_file):
         keys_with_dict_as_values_inserts,
         keys_with_dict_as_values_updates
     )
+
+    return replace_nulls_with_tilde_in_string(combined_updated_blocks_replaced)
