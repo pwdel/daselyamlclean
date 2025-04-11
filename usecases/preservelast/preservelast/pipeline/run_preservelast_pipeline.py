@@ -22,19 +22,13 @@ def run_preservelast_pipeline(replacements_dir, manifests_file):
     # Process Inserts: update dates for list-based and dict-based keys.
     counts = get_last_list_index_for_key(manifests_file, keys_with_list_as_values_inserts)
     list_item_key_values_inserts = get_list_item_key_values(manifests_file, counts)
-    print(f"list_item_key_values_inserts {list_item_key_values_inserts}")
     updated_list_dates_inserts = update_dates_in_data(list_item_key_values_inserts)
-    print(f"updated_list_dates_inserts: {updated_list_dates_inserts}")
     dict_item_key_values_inserts = get_dict_item_key_values(manifests_file, keys_with_dict_as_values_inserts)
     updated_dict_dates_inserts = update_dates_in_data(dict_item_key_values_inserts)
-
-    print(f"keys_with_dict_as_values_updates: {keys_with_dict_as_values_updates}")
 
     # Process Updates: update dates for dict-based keys (list updates not supported yet).
     dict_item_key_values_updates = get_dict_item_key_values(manifests_file, keys_with_dict_as_values_updates)
     updated_dict_dates_updates = update_dates_in_data(dict_item_key_values_updates)
-
-    print(f"dict_item_key_values_updates: {dict_item_key_values_updates}")
 
     # Combine updated data for both inserts and updates.
     combined_updated_dates = {
@@ -46,8 +40,6 @@ def run_preservelast_pipeline(replacements_dir, manifests_file):
     combined_lines_snapshot, combined_block_indicies = find_yaml_block_indices_for_combined(
         manifests_file, combined_updated_dates
     )
-
-    print(f"combined_updated_dates: {combined_updated_dates}")
 
     # Produce and print the final updated file content.
     combined_updated_blocks_replaced = replace_combined_updated_blocks(
